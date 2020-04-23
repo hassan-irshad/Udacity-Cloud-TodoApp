@@ -4,13 +4,27 @@ service:
 plugins:
   - serverless-webpack
   - serverless-iam-roles-per-function
+  - serverless-reqvalidator-plugin
+  - serverless-aws-documentation
+
+custom:
+  documentation:
+    api:
+      info:
+        version: v1.0.0
+        title: TodoApp API
+        description: Serverless application for todo app
+    models:
+      - name: TodoRequest
+        contentType: application/json
+        schema: ${file(models/create-todo-request.json)}
 
 provider:
   name: aws
   runtime: nodejs12.x
   environment:
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
-    TODOS_TABLE: Todo-${self:provider.stage}
+    TODOS_TABLE: Todos-${self:provider.stage}
     AUTH_0_SECRET: xyBGlWT3gmxtDG698Ulfivz51GdcE7cCzDDGizBPEPIKPMT9zMBmPdn5Y53kOvw3
     INDEX_NAME: USER-TODOS
     IMAGES_S3_BUCKET: todoapp-images-${self:provider.stage}
@@ -45,7 +59,6 @@ functions:
   Auth:
     handler: src/lambda/auth/auth0Authorizer.handler
 
-  # TODO: Configure this function
   GetTodos:
     handler: src/lambda/http/getTodos.handler
     events:
@@ -55,7 +68,6 @@ functions:
           cors: true
           authorizer: Auth
 
-  # TODO: Configure this function
   CreateTodo:
     handler: src/lambda/http/createTodo.handler
     events:
@@ -64,8 +76,13 @@ functions:
           path: todos
           cors: true
           authorizer: Auth
+          reqValidatorName: RequestBodyValidator
+          documentation:
+            summary: Create a new todo
+            description: Create a new todo
+            requestModels:
+              'application/json': TodoRequest
 
-  # TODO: Configure this function
   UpdateTodo:
     handler: src/lambda/http/updateTodo.handler
     events:
@@ -75,7 +92,6 @@ functions:
           cors: true
           authorizer: Auth
 
-  # TODO: Configure this function
   DeleteTodo:
     handler: src/lambda/http/deleteTodo.handler
     events:
@@ -85,7 +101,6 @@ functions:
           cors: true
           authorizer: Auth
 
-  # TODO: Configure this function
   GenerateUploadUrl:
     handler: src/lambda/http/generateUploadUrl.handler
     events:
@@ -97,6 +112,15 @@ functions:
 
 resources:
   Resources:
+    RequestBodyValidator:
+      Type: AWS::ApiGateway::RequestValidator
+      Properties:
+        Name: 'request-body-validator'
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        ValidateRequestBody: true
+        ValidateRequestParameters: false
+
     GatewayResponseDefault4XX:
       Type: 'AWS::ApiGateway::GatewayResponse'
       Properties:
@@ -118,6 +142,8 @@ resources:
         KeySchema:
           - AttributeName: todoId
             KeyType: HASH
+          - AttributeName: userId
+            KeyType: RANGE
         BillingMode: PAY_PER_REQUEST
         TableName: ${self:provider.environment.TODOS_TABLE}
         GlobalSecondaryIndexes:

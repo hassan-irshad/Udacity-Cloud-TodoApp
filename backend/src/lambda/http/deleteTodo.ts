@@ -2,16 +2,22 @@ import 'source-map-support/register'
 import * as AWS from 'aws-sdk'
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult, APIGatewayProxyHandler } from 'aws-lambda'
+import { createLogger } from '../../utils/logger'
 
 const doClient = new AWS.DynamoDB.DocumentClient()
 const todosTable = process.env.TODOS_TABLE
 
+const logger = createLogger('deleteTodo')
+
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     const todoId = event.pathParameters.todoId
+
+    logger.info('Finding todo with the given id')
 
     const todoExist = todoExists(todoId);
 
     if (!todoId) {
+        logger.info('Provide todo id')
         return {
             statusCode: 400,
             headers: {
@@ -24,6 +30,7 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
     }
 
     if (!todoExist) {
+        logger.info('Todo not exist')
         return {
             statusCode: 404,
             headers: {
@@ -34,6 +41,8 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEven
             })
         }
     }
+
+    logger.info('Todo deleted')
 
     await doClient.delete({
         TableName: todosTable,
