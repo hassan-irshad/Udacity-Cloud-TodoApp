@@ -5,18 +5,21 @@ import * as uuid from 'uuid'
 import { APIGatewayProxyEvent, APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda'
 
 import { CreateTodoRequest } from '../../requests/CreateTodoRequest'
+import { parseUserId } from '../../auth/utils'
 
 const doClient = new AWS.DynamoDB.DocumentClient()
 const todosTable = process.env.TODOS_TABLE
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   const newTodo: CreateTodoRequest = JSON.parse(event.body)
+  const userId = parseUserId(event.headers.Authorization.split(' ')[1])
   const itemId = uuid.v4();
 
   const newItem = {
     todoId: itemId,
     createdAt: new Date().toISOString(),
     done: false,
+    userId,
     ...newTodo
   }
 
