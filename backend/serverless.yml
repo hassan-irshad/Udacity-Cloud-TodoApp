@@ -6,7 +6,7 @@ plugins:
   - serverless-iam-roles-per-function
   - serverless-reqvalidator-plugin
   - serverless-aws-documentation
-
+  - serverless-plugin-tracing
 custom:
   documentation:
     api:
@@ -20,11 +20,21 @@ custom:
         schema: ${file(models/create-todo-request.json)}
 
 provider:
+  tracing:
+    lambda: true
+    apiGateway: true
+    iamRoleStatements:             
+      - Effect: 'Allow'           
+        Action:
+          - 'xray:PutTraceSegments'       
+          - 'xray:PutTelemetryRecords'
+        Resource:
+          - '*'
   name: aws
   runtime: nodejs12.x
   environment:
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
-    TODOS_TABLE: Todo-${self:provider.stage}
+    TODOS_TABLE: Todos-${self:provider.stage}
     AUTH_0_SECRET: xyBGlWT3gmxtDG698Ulfivz51GdcE7cCzDDGizBPEPIKPMT9zMBmPdn5Y53kOvw3
     INDEX_NAME: USER-TODOS
     IMAGES_S3_BUCKET: todoapp-images-${self:provider.stage}
@@ -166,8 +176,10 @@ resources:
           - AttributeName: userId
             AttributeType: S
         KeySchema:
-          - AttributeName: todoId
+          - AttributeName: userId
             KeyType: HASH
+          - AttributeName: todoId
+            KeyType: RANGE
         BillingMode: PAY_PER_REQUEST
         TableName: ${self:provider.environment.TODOS_TABLE}
         GlobalSecondaryIndexes:
